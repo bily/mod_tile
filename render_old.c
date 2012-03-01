@@ -287,7 +287,6 @@ void enqueue(const char *path)
     qLen++;
 
     pthread_mutex_unlock(&qLock);
-    sleep(10);
 }
 
 static void descend(const char *search)
