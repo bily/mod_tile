@@ -172,49 +172,65 @@ int xyz_to_meta(char *path, size_t len, const char *tile_dir, const char *xmlcon
 
 time_t getPlanetTimestamp(char *tile_dir, char *mapname)
 {
-    static time_t last_check[XMLCONFIGS_MAX];
-    static time_t planet_timestamp[XMLCONFIGS_MAX];
+    static time_t last_planet_check;
+    static time_t last_map_check[XMLCONFIGS_MAX];
+    static time_t planet_timestamp;
+    static time_t map_timestamp[XMLCONFIGS_MAX];
     time_t now = time(NULL);
     struct stat buf;
     char filename[PATH_MAX];
     int mapnumber;
 
-    mapnumber = getMapNumber(mapname);
+    if(mapname != NULL){
+        mapnumber = getMapNumber(mapname);
+
+        // Only check for updates periodically
+        if (now < last_map_check[mapnumber] + 300){
+            return map_timestamp[mapnumber];
+        }
+
+        last_map_check[mapnumber] = now;
+        snprintf(filename, PATH_MAX-1, "%s/%s/%s", tile_dir, mapname, PLANET_TIMESTAMP);
+
+        if (!stat(filename, &buf)) {
+            return map_timestamp[mapnumber] = buf.st_mtime;
+        }
+    }
 
     // Only check for updates periodically
-    if (now < last_check[mapnumber] + 300)
-        return planet_timestamp[mapnumber];
-
-    last_check[mapnumber] = now;
-    snprintf(filename, PATH_MAX-1, "%s/%s/%s", tile_dir, mapname, PLANET_TIMESTAMP);
-
-    if (stat(filename, &buf)) {
-        // specific planet time missing, check for gloabal
-        snprintf(filename, PATH_MAX-1, "%s/%s", tile_dir, PLANET_TIMESTAMP);
-        if (stat(filename, &buf)) {
-            fprintf(stderr, "Planet timestamp file (%s) is missing\n", filename);
-            // Make something up
-            planet_timestamp[mapnumber] = now - 3 * 24 * 60 * 60;
-        }else{
-            planet_timestamp[mapnumber] = buf.st_mtime;
-        }
-    } else {
-        planet_timestamp[mapnumber] = buf.st_mtime;
+    if (now < last_planet_check + 300){
+        return planet_timestamp;
     }
-    return planet_timestamp[mapnumber];
+    last_planet_check = now;
+
+    // specific planet time missing, check for gloabal
+    snprintf(filename, PATH_MAX-1, "%s/%s", tile_dir, PLANET_TIMESTAMP);
+    if (stat(filename, &buf)) {
+        fprintf(stderr, "Planet timestamp file (%s) is missing\n", filename);
+        // Make something up
+        planet_timestamp = now - 3 * 24 * 60 * 60;
+    }else{
+        planet_timestamp = buf.st_mtime;
+    }
+    return planet_timestamp;
 }
 
 int getMapNumber(char *mapname)
 {
     static char *mapnames[XMLCONFIGS_MAX];
-    int i = 0;
+    int i;
 
-    for (i; i < XMLCONFIGS_MAX; i++){
-        if(!strcmp(mapnames[i], mapname)){
-            return i;
-        }
-        if(mapnames[i] == NULL){
-            mapnames[i] = mapname;
+    if(mapname == NULL){
+        return 0;
+    }
+
+    for (i = 0; i < XMLCONFIGS_MAX; i++){
+        if(mapnames[i] != NULL){
+            if(strcmp(mapnames[i], mapname) == 0){
+                return i;
+            }
+        }else{
+            mapnames[i] = strdup(mapname);
             return i;
         }
     }

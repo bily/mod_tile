@@ -41,6 +41,7 @@ static int num_render = 0, num_all = 0;
 static int max_load = MAX_LOAD_OLD;
 static time_t planetTime;
 static struct timeval start, end;
+char *tile_dir = HASH_PATH;
 
 
 int work_complete;
@@ -261,7 +262,7 @@ void enqueue(const char *path)
     pthread_mutex_unlock(&qLock);
 }
 
-static void descend(const char *search)
+static void descend(const char *search, time_t timestamp)
 {
     DIR *tiles = opendir(search);
     struct dirent *entry;
@@ -284,13 +285,13 @@ static void descend(const char *search)
         if (stat(path, &b))
             continue;
         if (S_ISDIR(b.st_mode)) {
-            descend(path);
+            descend(path, timestamp);
             continue;
         }
         p = strrchr(path, '.');
         if (p && !strcmp(p, ".meta")) {
             num_all++;
-            if (planetTime > b.st_mtime) {
+            if (timestamp > b.st_mtime) {
                 // request rendering of  old tile
                 enqueue(path);
             }
@@ -339,11 +340,18 @@ void *thread_main(void *arg)
 void render_layer(const char *name)
 {
     int z;
+    time_t timestamp;
 
+    if(planetTime == 0){
+        timestamp = getPlanetTimestamp(tile_dir, name);
+    }else{
+        timestamp = planetTime;
+    }
+    printf("Planet file updated at %s", ctime(&timestamp));
     for (z=minZoom; z<=maxZoom; z++) {
         char path[PATH_MAX];
         snprintf(path, PATH_MAX, HASH_PATH "/%s/%d", name, z);
-        descend(path);
+        descend(path, timestamp);
     }
 }
 
@@ -392,7 +400,6 @@ void finish_workers(int num)
 int main(int argc, char **argv)
 {
     char spath[PATH_MAX] = RENDER_SOCKET;
-    char *tile_dir = HASH_PATH;
     char *config_file = RENDERD_CONFIG;
     char *map = NULL;
     int c;
@@ -506,10 +513,7 @@ int main(int argc, char **argv)
 
     fprintf(stderr, "Rendering old tiles\n");
 
-    if (planetTime == 0) {
-        planetTime = getPlanetTimestamp(tile_dir, map);
-        printf("Planet file updated at %s", ctime(&planetTime));
-    } else {
+    if (planetTime != 0) {
         printf("Overwriting planet file update to %s", ctime(&planetTime));
     }
 
