@@ -24,6 +24,9 @@ void xyz_to_path(char *path, size_t len, const char *tile_dir, const char *xmlco
 int check_xyz(int x, int y, int z);
 int path_to_xyz(const char *path, char *xmlconfig, int *px, int *py, int *pz);
 
+time_t getPlanetTimestamp(char *tile_dir, char *mapname);
+int getMapNumber(char *mapname);
+
 #ifdef METATILE
 /* New meta-tile storage functions */
 /* Returns the path to the meta-tile and the offset within the meta-tile */
@@ -33,6 +36,5 @@ int xyz_to_meta(char *path, size_t len, const char *tile_dir, const char *xmlcon
 #ifdef __cplusplus
   }
 #endif
-
 
 #endif

@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include <time.h>
 
 #include "protocol.h"
 #include "render_config.h"
@@ -168,3 +169,53 @@ int xyz_to_meta(char *path, size_t len, const char *tile_dir, const char *xmlcon
     return offset;
 }
 #endif
+
+time_t getPlanetTimestamp(char *tile_dir, char *mapname)
+{
+    static time_t last_check[XMLCONFIGS_MAX];
+    static time_t planet_timestamp[XMLCONFIGS_MAX];
+    time_t now = time(NULL);
+    struct stat buf;
+    char filename[PATH_MAX];
+    int mapnumber;
+
+    mapnumber = getMapNumber(mapname);
+
+    // Only check for updates periodically
+    if (now < last_check[mapnumber] + 300)
+        return planet_timestamp[mapnumber];
+
+    last_check[mapnumber] = now;
+    snprintf(filename, PATH_MAX-1, "%s/%s/%s", tile_dir, mapname, PLANET_TIMESTAMP);
+
+    if (stat(filename, &buf)) {
+        // specific planet time missing, check for gloabal
+        snprintf(filename, PATH_MAX-1, "%s/%s", tile_dir, PLANET_TIMESTAMP);
+        if (stat(filename, &buf)) {
+            fprintf(stderr, "Planet timestamp file (%s) is missing\n", filename);
+            // Make something up
+            planet_timestamp[mapnumber] = now - 3 * 24 * 60 * 60;
+        }else{
+            planet_timestamp[mapnumber] = buf.st_mtime;
+        }
+    } else {
+        planet_timestamp[mapnumber] = buf.st_mtime;
+    }
+    return planet_timestamp[mapnumber];
+}
+
+int getMapNumber(char *mapname)
+{
+    static char *mapnames[XMLCONFIGS_MAX];
+    int i = 0;
+
+    for (i; i < XMLCONFIGS_MAX; i++){
+        if(!strcmp(mapnames[i], mapname)){
+            return i;
+        }
+        if(mapnames[i] == NULL){
+            mapnames[i] = mapname;
+            return i;
+        }
+    }
+}

@@ -59,34 +59,6 @@ void display_rate(struct timeval start, struct timeval end, int num)
     fflush(NULL);
 }
 
-static time_t getPlanetTime(char *tile_dir)
-{
-    static time_t last_check;
-    static time_t planet_timestamp;
-    time_t now = time(NULL);
-    struct stat buf;
-    char filename[PATH_MAX];
-
-    snprintf(filename, PATH_MAX-1, "%s/%s", tile_dir, PLANET_TIMESTAMP);
-
-    // Only check for updates periodically
-    if (now < last_check + 300)
-        return planet_timestamp;
-
-    last_check = now;
-    if (stat(filename, &buf)) {
-        fprintf(stderr, "Planet timestamp file (%s) is missing\n", filename);
-        // Make something up
-        planet_timestamp = now - 3 * 24 * 60 * 60;
-    } else {
-        if (buf.st_mtime != planet_timestamp) {
-            printf("Planet file updated at %s", ctime(&buf.st_mtime));
-            planet_timestamp = buf.st_mtime;
-        }
-    }
-    return planet_timestamp;
-}
-
 int get_load_avg(void)
 {
     double load[3];
@@ -535,7 +507,8 @@ int main(int argc, char **argv)
     fprintf(stderr, "Rendering old tiles\n");
 
     if (planetTime == 0) {
-        planetTime = getPlanetTime(tile_dir);
+        planetTime = getPlanetTimestamp(tile_dir, map);
+        printf("Planet file updated at %s", ctime(&planetTime));
     } else {
         printf("Overwriting planet file update to %s", ctime(&planetTime));
     }
