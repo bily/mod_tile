@@ -304,12 +304,14 @@ void item_load(struct item *item, const struct protocol *req) {
     char path[PATH_MAX];
     struct stat buf;
     xyz_to_meta(path, sizeof(path), HASH_PATH, req->xmlname, req->x, req->y, req->z);
-    stat(path, &buf);
-
-    // save time of old tile
-    item->old_mtime=0;
-    if(buf.st_size>0)
+    if(!stat(path, &buf)) {
+	// save time of old tile
 	item->old_mtime=buf.st_mtime;
+    }
+    else {
+	// no tile
+	item->old_mtime=0;
+    }
 }
 
 enum protoCmd rx_request(const struct protocol *req, int fd)
