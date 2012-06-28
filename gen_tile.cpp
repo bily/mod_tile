@@ -7,6 +7,8 @@
 #include <mapnik/load_map.hpp>
 #include <mapnik/image_util.hpp>
 #include <mapnik/config_error.hpp>
+#include <mapnik/image_view.hpp>
+#include <mapnik/graphics.hpp>
 
 #include <iostream>
 #include <fstream>
